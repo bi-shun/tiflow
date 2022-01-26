@@ -418,7 +418,13 @@ func (c *MessageClient) sendMessage(ctx context.Context, topic Topic, value inte
 		// the sequence = 0 is reserved.
 		tpk.nextSeq.Store(1)
 		c.topicMu.Lock()
-		c.topics[topic] = tpk
+		if curTpk, ok := c.topics[topic]; ok {
+			// We are competing with another goroutine to create the topicEntry,
+			// and we have lost.
+			tpk = curTpk
+		} else {
+			c.topics[topic] = tpk
+		}
 		c.topicMu.Unlock()
 	}
 
